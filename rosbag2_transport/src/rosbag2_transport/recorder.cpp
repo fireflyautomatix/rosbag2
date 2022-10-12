@@ -170,6 +170,7 @@ void Recorder::record()
         const std::shared_ptr<rosbag2_interfaces::srv::Snapshot::Response> response)
       {
         response->success = writer_->take_snapshot();
+        RCLCPP_INFO(this->get_logger(), "Snapshot result: %s", response->success ? "success" : "failure");
       });
   }
 

@@ -170,13 +170,9 @@ class RecordVerb(VerbExtension):
         self._subparser = parser
 
     def main(self, *, args):  # noqa: D102
-        # both all and topics cannot be true
-        count_true = sum(1 for var in (args.all, args.topics, args.regex, args.topics_config_file ) if var)
-        if count_true > 1:
+        # One and only one of the following must be specified
+        if sum([args.all == True, len(args.topics) > 0, args.regex != '', args.topics_config_file is not None]) != 1:
             return print_error('Must specify only one option out of topics, --regex, --all or --topics-config-file')
-        # one out of "all", "topics" and "regex" must be true
-        if not(args.all or (args.topics and len(args.topics) > 0) or (args.regex) or (args.topics_config_file)):
-            return print_error('Invalid choice: Must specify topic(s), --regex or --all')
 
         if args.topics and args.exclude:
             return print_error('--exclude argument cannot be used when specifying a list '
@@ -185,8 +181,8 @@ class RecordVerb(VerbExtension):
         if args.exclude and not(args.regex or args.all):
             return print_error('--exclude argument requires either --all or --regex')
 
-        uri = args.output or datetime.datetime.now().strftime('rosbag2_%Y_%m_%d-%H_%M_%S')
-
+        bag_name = datetime.datetime.now().strftime('rosbag2_%Y_%m_%d-%H_%M_%S')
+        uri = f"{args.output}/{bag_name}" if args.output else bag_name
         if os.path.isdir(uri):
             return print_error("Output folder '{}' already exists.".format(uri))
 
