@@ -158,6 +158,9 @@ class RecordVerb(VerbExtension):
                  '  pragmas: [\"<setting_name>\" = <setting_value>]'
                  'For a list of sqlite3 settings, refer to sqlite3 documentation')
         parser.add_argument(
+            '--topics-config-file', type=FileType('r'),
+            help='Path to a yaml file defining topics to be recorded. ')
+        parser.add_argument(
             '--start-paused', action='store_true', default=False,
             help='Start the recorder in a paused state.')
         parser.add_argument(
@@ -168,10 +171,11 @@ class RecordVerb(VerbExtension):
 
     def main(self, *, args):  # noqa: D102
         # both all and topics cannot be true
-        if (args.all and (args.topics or args.regex)) or (args.topics and args.regex):
-            return print_error('Must specify only one option out of topics, --regex or --all')
+        count_true = sum(1 for var in (args.all, args.topics, args.regex, args.topics_config_file ) if var)
+        if count_true > 1:
+            return print_error('Must specify only one option out of topics, --regex, --all or --topics-config-file')
         # one out of "all", "topics" and "regex" must be true
-        if not(args.all or (args.topics and len(args.topics) > 0) or (args.regex)):
+        if not(args.all or (args.topics and len(args.topics) > 0) or (args.regex) or (args.topics_config_file)):
             return print_error('Invalid choice: Must specify topic(s), --regex or --all')
 
         if args.topics and args.exclude:
@@ -203,6 +207,17 @@ class RecordVerb(VerbExtension):
                     qos_profile_dict)
             except (InvalidQoSProfileException, ValueError) as e:
                 return print_error(str(e))
+
+        if args.topics_config_file:
+            topics_yaml = yaml.safe_load(args.topics_config_file)
+            try:
+                args.topics = topics_yaml["topics"]
+            except (KeyError) as e:
+                return print_error("No key 'topics' in topics config file")
+            except Exception as e:
+                return print_error(str(e))
+            if type(args.topics) != list:
+                return print_error("Topics config file must contain a list of topics")
 
         if args.use_sim_time and args.no_discovery:
             return print_error(
