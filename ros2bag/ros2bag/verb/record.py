@@ -258,6 +258,7 @@ class RecordVerb(VerbExtension):
         record_options.start_paused = args.start_paused
         record_options.ignore_leaf_topics = args.ignore_leaf_topics
         record_options.use_sim_time = args.use_sim_time
+        record_options.repeated_transient_local = args.repeated_transient_local
 
         recorder = Recorder()
 

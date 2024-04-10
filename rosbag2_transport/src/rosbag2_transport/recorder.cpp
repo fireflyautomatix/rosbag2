@@ -422,12 +422,12 @@ Recorder::create_subscription(
     qos,
     [this, topic_name, topic_type, qos](std::shared_ptr<rclcpp::SerializedMessage> message) {
       if (!paused_.load()) {
-        writer_->write(message, topic_name, topic_type, this->get_clock()->now());
         if (record_options_.repeated_transient_local &&
         qos.get_rmw_qos_profile().durability == RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL)
         {
-          transient_local_messages_.insert_or_assign({topic_name, topic_type}, message);
+          transient_local_messages_.insert_or_assign({topic_name, topic_type}, *message);
         }
+        writer_->write(message, topic_name, topic_type, this->get_clock()->now());
       }
     });
   return subscription;
