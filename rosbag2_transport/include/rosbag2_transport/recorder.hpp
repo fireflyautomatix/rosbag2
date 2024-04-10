@@ -16,6 +16,7 @@
 #define ROSBAG2_TRANSPORT__RECORDER_HPP_
 
 #include <future>
+#include <map>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -161,6 +162,7 @@ private:
 
   std::future<void> discovery_future_;
   std::unordered_map<std::string, std::shared_ptr<rclcpp::GenericSubscription>> subscriptions_;
+  std::map<std::pair<std::string, std::string>, rclcpp::SerializedMessage> transient_local_messages_;
   std::unordered_set<std::string> topics_warned_about_incompatibility_;
   std::string serialization_format_;
   std::unordered_map<std::string, rclcpp::QoS> topic_qos_profile_overrides_;

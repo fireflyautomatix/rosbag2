@@ -167,6 +167,10 @@ class RecordVerb(VerbExtension):
             '--use-sim-time', action='store_true', default=False,
             help='Use simulation time for message timestamps by subscribing to the /clock topic. '
                  'Until first /clock message is received, no messages will be written to bag.')
+        parser.add_argument(
+            '--repeated-transient-local', action='store_true', default=False,
+            help='Repeat transient local messages at the start of each new bag file.'
+        )
         self._subparser = parser
 
     def main(self, *, args):  # noqa: D102
@@ -254,6 +258,7 @@ class RecordVerb(VerbExtension):
         record_options.start_paused = args.start_paused
         record_options.ignore_leaf_topics = args.ignore_leaf_topics
         record_options.use_sim_time = args.use_sim_time
+        record_options.repeated_transient_local = args.repeated_transient_local
 
         recorder = Recorder()
 
