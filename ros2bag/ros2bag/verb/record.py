@@ -21,6 +21,7 @@ from ros2bag.api import convert_yaml_to_qos_profile
 from ros2bag.api import print_error
 from ros2bag.verb import VerbExtension
 from ros2cli.node import NODE_NAME_PREFIX
+from rosbag2_py import get_default_storage_id
 from rosbag2_py import get_registered_compressors
 from rosbag2_py import get_registered_serializers
 from rosbag2_py import get_registered_writers
@@ -35,7 +36,9 @@ class RecordVerb(VerbExtension):
 
     def add_arguments(self, parser, cli_name):  # noqa: D102
         writer_choices = get_registered_writers()
-        default_writer = 'sqlite3' if 'sqlite3' in writer_choices else writer_choices[0]
+        default_storage_id = get_default_storage_id()
+        default_writer = default_storage_id if default_storage_id in writer_choices else \
+            next(iter(writer_choices))
 
         compression_format_choices = get_registered_compressors()
         serialization_choices = get_registered_serializers()
@@ -55,7 +58,7 @@ class RecordVerb(VerbExtension):
         parser.add_argument(
             '-e', '--regex', default='',
             help='Record only topics containing provided regular expression. '
-            'Overrides --all, applies on top of topics list.')
+                 'Applies on top of topics list.')
         parser.add_argument(
             '-x', '--exclude', default='',
             help='Exclude topics containing provided regular expression. '
@@ -168,6 +171,10 @@ class RecordVerb(VerbExtension):
             help='Use simulation time for message timestamps by subscribing to the /clock topic. '
                  'Until first /clock message is received, no messages will be written to bag.')
         parser.add_argument(
+            '--log-level', type=str, default='info',
+            choices=['debug', 'info', 'warn', 'error', 'fatal'],
+        help='Logging level.')
+        parser.add_argument(
             '--repeated-transient-local', action='store_true', default=False,
             help='Repeat transient local messages at the start of each new bag file.'
         )
@@ -177,6 +184,9 @@ class RecordVerb(VerbExtension):
         # One and only one of the following must be specified
         if sum([args.all == True, len(args.topics) > 0, args.regex != '', args.topics_config_file is not None]) != 1:
             return print_error('Must specify only one option out of topics, --regex, --all or --topics-config-file')
+
+        if args.all and args.regex:
+            print('[WARN] [ros2bag]: --all will override --regex.')
 
         if args.topics and args.exclude:
             return print_error('--exclude argument cannot be used when specifying a list '
@@ -194,8 +204,13 @@ class RecordVerb(VerbExtension):
             return print_error('Invalid choice: Cannot specify compression format '
                                'without a compression mode.')
 
-        if args.compression_queue_size < 1:
-            return print_error('Compression queue size must be at least 1.')
+        if args.compression_mode == 'message' and args.storage == 'mcap':
+            return print_error("Invalid choice: compression_mode 'message' is not supported "
+                               'by the MCAP storage plugin. You can enable chunk compression by '
+                               "setting `compression: 'Zstd'` in storage config")
+
+        if args.compression_queue_size < 0:
+            return print_error('Compression queue size must be at least 0.')
 
         args.compression_mode = args.compression_mode.upper()
 
@@ -260,7 +275,7 @@ class RecordVerb(VerbExtension):
         record_options.use_sim_time = args.use_sim_time
         record_options.repeated_transient_local = args.repeated_transient_local
 
-        recorder = Recorder()
+        recorder = Recorder(args.log_level)
 
         try:
             recorder.record(storage_options, record_options)
