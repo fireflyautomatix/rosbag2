@@ -269,8 +269,9 @@ void Recorder::event_publisher_thread_main()
       }
       if (writer_ && record_options_.repeated_transient_local) {
         for (const auto & msg : transient_local_messages_) {
+	auto serialized_msg = std::make_shared<rclcpp::SerializedMessage>(msg.second);
           writer_->write(
-            msg.second, msg.first.first, msg.first.second,
+            serialized_msg, msg.first.first, msg.first.second,
             this->get_clock()->now());
         }
       }
