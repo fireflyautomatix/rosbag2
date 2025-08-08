@@ -19,7 +19,6 @@
 #include <vector>
 
 #include "rcpputils/thread_safety_annotations.hpp"
-#include "rcpputils/unique_lock.hpp"
 #include "rosbag2_cpp/clocks/time_controller_clock.hpp"
 #include "rosbag2_cpp/types.hpp"
 
@@ -163,7 +162,7 @@ TimeControllerClock::ros_to_steady(rcutils_time_point_value_t ros_time) const
 bool TimeControllerClock::sleep_until(rcutils_time_point_value_t until)
 {
   {
-    rcpputils::unique_lock<std::mutex> lock(impl_->state_mutex);
+    std::unique_lock<std::mutex> lock(impl_->state_mutex);
     if (impl_->paused) {
       impl_->cv.wait_for(lock, impl_->sleep_time_while_paused);
     } else {

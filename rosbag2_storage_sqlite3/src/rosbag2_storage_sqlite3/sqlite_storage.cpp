@@ -407,14 +407,14 @@ void SqliteStorage::get_all_message_definitions(
   definitions.clear();
   if (db_schema_version_ < 4) {return;}
   auto statement = database_->prepare_statement(
-    "SELECT topic_type, encoding, encoded_message_definition, type_description_hash FROM "
+    "SELECT topic_type, encoding, encoded_message_definition FROM "
     "message_definitions ORDER BY id;");
   auto query_results =
-    statement->execute_query<std::string, std::string, std::string, std::string>();
+    statement->execute_query<std::string, std::string, std::string>();
 
   for (auto result : query_results) {
     definitions.push_back(
-      {std::get<0>(result), std::get<1>(result), std::get<2>(result), std::get<3>(result)});
+      {std::get<0>(result), std::get<1>(result), std::get<2>(result)});
   }
 }
 
@@ -448,16 +448,14 @@ void SqliteStorage::initialize()
     "name TEXT NOT NULL," \
     "type TEXT NOT NULL," \
     "serialization_format TEXT NOT NULL," \
-    "offered_qos_profiles TEXT NOT NULL," \
-    "type_description_hash TEXT NOT NULL);";
+    "offered_qos_profiles TEXT NOT NULL);";
   database_->prepare_statement(create_stmt)->execute_and_reset();
 
   create_stmt = "CREATE TABLE message_definitions(" \
     "id INTEGER PRIMARY KEY," \
     "topic_type TEXT NOT NULL," \
     "encoding TEXT NOT NULL," \
-    "encoded_message_definition TEXT NOT NULL," \
-    "type_description_hash TEXT NOT NULL);";
+    "encoded_message_definition TEXT NOT NULL);";
   database_->prepare_statement(create_stmt)->execute_and_reset();
 
   create_stmt = "CREATE TABLE messages(" \
@@ -487,32 +485,27 @@ void SqliteStorage::create_topic(
     auto insert_topic =
       database_->prepare_statement(
       "INSERT INTO topics"
-      "(name, type, serialization_format, offered_qos_profiles, type_description_hash) "
+      "(name, type, serialization_format, offered_qos_profiles) "
       "VALUES (?, ?, ?, ?, ?)");
     insert_topic->bind(
       topic.name,
       topic.type,
       topic.serialization_format,
-      rosbag2_storage::serialize_rclcpp_qos_vector(topic.offered_qos_profiles),
-      topic.type_description_hash);
+      rosbag2_storage::serialize_rclcpp_qos_vector(topic.offered_qos_profiles));
     insert_topic->execute_and_reset();
     topics_.emplace(topic.name, static_cast<int>(database_->get_last_insert_id()));
   }
-  // TODO(morlov): Add topic.type_description_hash when it will be really calculated or getting
-  //  from service. Currently dummy hashes causing tests failure
   std::string topic_type_and_hash = message_definition.topic_type;
   if (!topic_type_and_hash.empty() &&
     msg_definitions_.find(topic_type_and_hash) == std::end(msg_definitions_))
   {
-    std::string type_description_hash = message_definition.type_hash.empty() ?
-      topic.type_description_hash : message_definition.type_hash;
     auto insert_msg_definition =
       database_->prepare_statement(
-      "INSERT INTO message_definitions (topic_type, encoding, encoded_message_definition, "
-      "type_description_hash) VALUES (?, ?, ?, ?)");
+      "INSERT INTO message_definitions (topic_type, encoding, encoded_message_definition"
+      ") VALUES (?, ?, ?, ?)");
     insert_msg_definition->bind(
       message_definition.topic_type, message_definition.encoding,
-      message_definition.encoded_message_definition, type_description_hash);
+      message_definition.encoded_message_definition);
     insert_msg_definition->execute_and_reset();
     msg_definitions_.emplace(
       topic_type_and_hash,
@@ -609,42 +602,22 @@ void SqliteStorage::prepare_for_reading()
 void SqliteStorage::fill_topics_and_types()
 {
   if (database_->field_exists("topics", "offered_qos_profiles")) {
-    if (database_->field_exists("topics", "type_description_hash")) {
-      auto statement = database_->prepare_statement(
-        "SELECT id, name, type, serialization_format, offered_qos_profiles, type_description_hash"
-        " FROM topics ORDER BY id;");
-      auto query_results = statement->execute_query<
-        int64_t, std::string, std::string, std::string, std::string, std::string>();
+    auto statement = database_->prepare_statement(
+      "SELECT id, name, type, serialization_format, offered_qos_profiles FROM topics "
+      "ORDER BY id;");
+    auto query_results = statement->execute_query<
+      int64_t, std::string, std::string, std::string, std::string>();
 
-      for (const auto & [inner_topic_id, topic_name, topic_type, ser_format,
-        offered_qos_profiles_str, type_hash] : query_results)
-      {
-        auto offered_qos_profiles = rosbag2_storage::to_rclcpp_qos_vector(
-          // Before db_schema_version_ = 3 we didn't store metadata in the database and real
-          // metadata_.version will be lower than 9
-          offered_qos_profiles_str, (db_schema_version_ >= 3) ? metadata_.version : 8);
-        all_topics_and_types_.push_back(
-          {get_or_generate_extern_topic_id(inner_topic_id), topic_name, topic_type, ser_format,
-            offered_qos_profiles, type_hash});
-      }
-    } else {  // Without type_hash
-      auto statement = database_->prepare_statement(
-        "SELECT id, name, type, serialization_format, offered_qos_profiles FROM topics "
-        "ORDER BY id;");
-      auto query_results = statement->execute_query<
-        int64_t, std::string, std::string, std::string, std::string>();
-
-      for (const auto & [inner_topic_id, topic_name, topic_type, ser_format,
-        offered_qos_profiles_str] : query_results)
-      {
-        auto offered_qos_profiles = rosbag2_storage::to_rclcpp_qos_vector(
-          // Before db_schema_version_ = 3 we didn't store metadata in the database and real
-          // metadata_.version will be lower than 9
-          offered_qos_profiles_str, (db_schema_version_ >= 3) ? metadata_.version : 8);
-        all_topics_and_types_.push_back(
-          {get_or_generate_extern_topic_id(inner_topic_id), topic_name, topic_type, ser_format,
-            offered_qos_profiles, ""});
-      }
+    for (const auto & [inner_topic_id, topic_name, topic_type, ser_format,
+      offered_qos_profiles_str] : query_results)
+    {
+      auto offered_qos_profiles = rosbag2_storage::to_rclcpp_qos_vector(
+        // Before db_schema_version_ = 3 we didn't store metadata in the database and real
+        // metadata_.version will be lower than 9
+        offered_qos_profiles_str, (db_schema_version_ >= 3) ? metadata_.version : 8);
+      all_topics_and_types_.push_back(
+        {get_or_generate_extern_topic_id(inner_topic_id), topic_name, topic_type, ser_format,
+          offered_qos_profiles});
     }
   } else {  // No offered_qos_profiles and no type_hash
     auto statement = database_->prepare_statement(
@@ -655,7 +628,7 @@ void SqliteStorage::fill_topics_and_types()
     for (const auto & [inner_topic_id, topic_name, topic_type, ser_format] : query_results) {
       all_topics_and_types_.push_back(
         {get_or_generate_extern_topic_id(inner_topic_id), topic_name, topic_type, ser_format,
-          {}, ""});
+          {}});
     }
   }
 }
@@ -677,7 +650,7 @@ uint64_t SqliteStorage::get_minimum_split_file_size() const
 
 void SqliteStorage::add_topic_to_metadata(
   int64_t inner_topic_id, std::string topic_name, std::string topic_type, std::string ser_format,
-  int64_t msg_count, const std::string & offered_qos_profiles_str, const std::string & type_hash)
+  int64_t msg_count, const std::string & offered_qos_profiles_str)
 {
   auto offered_qos_profiles = rosbag2_storage::to_rclcpp_qos_vector(
     // Before db_schema_version_ = 3 we didn't store metadata in the database and real
@@ -687,7 +660,7 @@ void SqliteStorage::add_topic_to_metadata(
     {
       {
         get_or_generate_extern_topic_id(inner_topic_id), topic_name, topic_type, ser_format,
-        offered_qos_profiles, type_hash
+        offered_qos_profiles
       },
       static_cast<size_t>(msg_count)
     });
@@ -726,51 +699,26 @@ void SqliteStorage::read_metadata()
   rcutils_time_point_value_t max_time = 0;
 
   if (database_->field_exists("topics", "offered_qos_profiles")) {
-    if (database_->field_exists("topics", "type_description_hash")) {
-      std::string query =
-        "SELECT messages.topic_id, name, type, serialization_format, COUNT(messages.id), "
-        "MIN(messages.timestamp), MAX(messages.timestamp), offered_qos_profiles, "
-        "type_description_hash FROM messages JOIN topics on topics.id = messages.topic_id "
-        "GROUP BY topics.name;";
+    std::string query =
+      "SELECT messages.topic_id, name, type, serialization_format, COUNT(messages.id), "
+      "MIN(messages.timestamp), MAX(messages.timestamp), offered_qos_profiles "
+      "FROM messages JOIN topics on topics.id = messages.topic_id "
+      "GROUP BY topics.name;";
 
-      auto statement = database_->prepare_statement(query);
-      auto query_results = statement->execute_query<
-        int64_t, std::string, std::string, std::string, int64_t, rcutils_time_point_value_t,
-        rcutils_time_point_value_t, std::string, std::string>();
+    auto statement = database_->prepare_statement(query);
+    auto query_results =
+      statement->execute_query<int64_t, std::string, std::string, std::string, int64_t,
+        rcutils_time_point_value_t, rcutils_time_point_value_t, std::string>();
 
-      for (const auto & [inner_topic_id, topic_name, topic_type, ser_format, msg_count,
-        min_recv_timestamp, max_recv_timestamp, offered_qos_profiles_str, type_hash] :
-        query_results)
-      {
-        add_topic_to_metadata(
-          inner_topic_id, topic_name, topic_type, ser_format, msg_count,
-          offered_qos_profiles_str, type_hash);
+    for (const auto & [inner_topic_id, topic_name, topic_type, ser_format, msg_count,
+      min_recv_timestamp, max_recv_timestamp, offered_qos_profiles_str] : query_results)
+    {
+      add_topic_to_metadata(
+        inner_topic_id, topic_name, topic_type, ser_format, msg_count,
+        offered_qos_profiles_str);
 
-        min_time = min_recv_timestamp < min_time ? min_recv_timestamp : min_time;
-        max_time = max_recv_timestamp > max_time ? max_recv_timestamp : max_time;
-      }
-    } else {  // Without type_hash
-      std::string query =
-        "SELECT messages.topic_id, name, type, serialization_format, COUNT(messages.id), "
-        "MIN(messages.timestamp), MAX(messages.timestamp), offered_qos_profiles "
-        "FROM messages JOIN topics on topics.id = messages.topic_id "
-        "GROUP BY topics.name;";
-
-      auto statement = database_->prepare_statement(query);
-      auto query_results =
-        statement->execute_query<int64_t, std::string, std::string, std::string, int64_t,
-          rcutils_time_point_value_t, rcutils_time_point_value_t, std::string>();
-
-      for (const auto & [inner_topic_id, topic_name, topic_type, ser_format, msg_count,
-        min_recv_timestamp, max_recv_timestamp, offered_qos_profiles_str] : query_results)
-      {
-        add_topic_to_metadata(
-          inner_topic_id, topic_name, topic_type, ser_format, msg_count,
-          offered_qos_profiles_str, "");
-
-        min_time = min_recv_timestamp < min_time ? min_recv_timestamp : min_time;
-        max_time = max_recv_timestamp > max_time ? max_recv_timestamp : max_time;
-      }
+      min_time = min_recv_timestamp < min_time ? min_recv_timestamp : min_time;
+      max_time = max_recv_timestamp > max_time ? max_recv_timestamp : max_time;
     }
   } else {  // No offered_qos_profiles and no type_hash
     std::string query =
@@ -785,7 +733,7 @@ void SqliteStorage::read_metadata()
     for (const auto & [inner_topic_id, topic_name, topic_type, ser_format, msg_count,
       min_recv_timestamp, max_recv_timestamp] : query_results)
     {
-      add_topic_to_metadata(inner_topic_id, topic_name, topic_type, ser_format, msg_count, "", "");
+      add_topic_to_metadata(inner_topic_id, topic_name, topic_type, ser_format, msg_count, "");
 
       min_time = min_recv_timestamp < min_time ? min_recv_timestamp : min_time;
       max_time = max_recv_timestamp > max_time ? max_recv_timestamp : max_time;

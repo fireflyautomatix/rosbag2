@@ -452,10 +452,6 @@ void MCAPStorage::read_metadata()
       topic_info.topic_metadata.offered_qos_profiles =
         rosbag2_storage::to_rclcpp_qos_vector(metadata_it->second, metadata_.version);
     }
-    const auto type_hash_it = channel.metadata.find("topic_type_hash");
-    if (type_hash_it != channel.metadata.end()) {
-      topic_info.topic_metadata.type_description_hash = type_hash_it->second;
-    }
 
     // Look up the message count for this Channel
     const auto message_count_it = stats.channelMessageCounts.find(channel_id);
@@ -706,9 +702,8 @@ void MCAPStorage::get_all_message_definitions(
       encoded_message_definition = std::string(
         reinterpret_cast<const char *>(&(schema_ptr->data[0])), schema_ptr->data.size());
     }
-    std::string type_hash;  // TODO(jrms): save and get type_hash in mcap schema
     definitions.push_back(
-      {schema_ptr->name, schema_ptr->encoding, encoded_message_definition, type_hash});
+      {schema_ptr->name, schema_ptr->encoding, encoded_message_definition});
   }
 }
 
@@ -820,7 +815,6 @@ void MCAPStorage::create_topic(const rosbag2_storage::TopicMetadata & topic,
     const auto & full_text = message_definition.encoded_message_definition;
     schema.data.assign(reinterpret_cast<const std::byte *>(full_text.data()),
                        reinterpret_cast<const std::byte *>(full_text.data() + full_text.size()));
-    // TODO(jrms): save message_definition.type_hash in mcap schema
     mcap_writer_->addSchema(schema);
     schema_ids_.emplace(datatype, schema.id);
     schema_id = schema.id;
@@ -838,7 +832,6 @@ void MCAPStorage::create_topic(const rosbag2_storage::TopicMetadata & topic,
     channel.metadata.emplace(
       "offered_qos_profiles",
       rosbag2_storage::serialize_rclcpp_qos_vector(topic_info.topic_metadata.offered_qos_profiles));
-    channel.metadata.emplace("topic_type_hash", topic_info.topic_metadata.type_description_hash);
     mcap_writer_->addChannel(channel);
     channel_ids_.emplace(topic.name, channel.id);
   }

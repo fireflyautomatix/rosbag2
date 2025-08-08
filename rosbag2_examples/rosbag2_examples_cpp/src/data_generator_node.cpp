@@ -40,7 +40,6 @@ public:
       "example_interfaces/msg/Int32",
       rmw_get_serialization_format(),
       {},
-      "",
     });
 
     timer_ = create_wall_timer(1s, std::bind(&DataGenerator::timer_callback, this));

@@ -16,7 +16,6 @@
 #include <vector>
 
 #include "rclcpp/logging.hpp"
-#include "rosbag2_cpp/service_utils.hpp"
 #include "rosbag2_storage/qos.hpp"
 #include "rosbag2_transport/play_options.hpp"
 #include "rosbag2_transport/config_options_from_node_params.hpp"
@@ -217,24 +216,8 @@ RecordOptions get_record_options_from_node_params(rclcpp::Node & node)
   record_options.topic_types = node.declare_parameter<std::vector<std::string>>(
     "record.topic_types", std::vector<std::string>());
 
-  // Convert service name to service event topic name
-  auto service_list = node.declare_parameter<std::vector<std::string>>(
-    "record.services", std::vector<std::string>());
-  for (auto & service : service_list) {
-    service = rosbag2_cpp::service_name_to_service_event_topic_name(service);
-  }
-  record_options.services = service_list;
-
   record_options.exclude_topics = node.declare_parameter<std::vector<std::string>>(
     "record.exclude_topics", std::vector<std::string>());
-
-  // Convert service name to service event topic name
-  auto exclude_service_list = node.declare_parameter<std::vector<std::string>>(
-    "record.exclude_services", std::vector<std::string>());
-  for (auto & service : exclude_service_list) {
-    service = rosbag2_cpp::service_name_to_service_event_topic_name(service);
-  }
-  record_options.exclude_service_events = exclude_service_list;
 
   record_options.rmw_serialization_format =
     node.declare_parameter<std::string>("record.rmw_serialization_format", "cdr");

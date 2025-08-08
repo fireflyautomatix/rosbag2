@@ -176,10 +176,6 @@ private:
   std::unique_ptr<RecorderImpl> pimpl_;
 };
 
-ROSBAG2_TRANSPORT_PUBLIC std::string type_hash_to_string(const rosidl_type_hash_t & type_hash);
-// Retrieve the type description hash from endpoint info.
-ROSBAG2_TRANSPORT_PUBLIC std::string type_description_hash_for_topic(
-  const std::vector<rclcpp::TopicEndpointInfo> & topics_endpoint_info);
 
 }  // namespace rosbag2_transport
 

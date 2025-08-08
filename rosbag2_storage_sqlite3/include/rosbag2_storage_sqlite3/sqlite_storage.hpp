@@ -117,8 +117,7 @@ private:
   void initialize();
   void add_topic_to_metadata(
     int64_t inner_topic_id, std::string topic_name, std::string topic_type, std::string ser_format,
-    int64_t msg_count, const std::string & offered_qos_profiles_str,
-    const std::string & type_hash);
+    int64_t msg_count, const std::string & offered_qos_profiles_str);
   void read_metadata();
   void prepare_for_writing();
   void prepare_for_reading();

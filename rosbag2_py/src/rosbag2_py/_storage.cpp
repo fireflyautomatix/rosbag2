@@ -139,17 +139,15 @@ PYBIND11_MODULE(_storage, m) {
 
   pybind11::class_<rosbag2_storage::MessageDefinition>(m, "MessageDefinition")
   .def(
-    pybind11::init<std::string, std::string, std::string, std::string>(),
+    pybind11::init<std::string, std::string, std::string>(),
     pybind11::arg("topic_type"),
     pybind11::arg("encoding"),
-    pybind11::arg("encoded_message_definition"),
-    pybind11::arg("type_hash"))
+    pybind11::arg("encoded_message_definition"))
   .def_readwrite("topic_type", &rosbag2_storage::MessageDefinition::topic_type)
   .def_readwrite("encoding", &rosbag2_storage::MessageDefinition::encoding)
   .def_readwrite(
     "encoded_message_definition",
-    &rosbag2_storage::MessageDefinition::encoded_message_definition)
-  .def_readwrite("type_hash", &rosbag2_storage::MessageDefinition::type_hash);
+    &rosbag2_storage::MessageDefinition::encoded_message_definition);
 
   pybind11::enum_<rmw_qos_history_policy_t>(m, "rmw_qos_history_policy_t")
   .value("RMW_QOS_POLICY_HISTORY_SYSTEM_DEFAULT", RMW_QOS_POLICY_HISTORY_SYSTEM_DEFAULT)
@@ -209,14 +207,12 @@ PYBIND11_MODULE(_storage, m) {
 
   pybind11::class_<rosbag2_storage::TopicMetadata>(m, "TopicMetadata")
   .def(
-    pybind11::init<uint16_t, std::string, std::string, std::string, std::vector<rclcpp::QoS>,
-    std::string>(),
+    pybind11::init<uint16_t, std::string, std::string, std::string, std::vector<rclcpp::QoS>>(),
     pybind11::arg("id"),
     pybind11::arg("name"),
     pybind11::arg("type"),
     pybind11::arg("serialization_format"),
-    pybind11::arg("offered_qos_profiles") = std::vector<rclcpp::QoS>(),
-    pybind11::arg("type_description_hash") = "")
+    pybind11::arg("offered_qos_profiles") = std::vector<rclcpp::QoS>())
   .def_readwrite("id", &rosbag2_storage::TopicMetadata::id)
   .def_readwrite("name", &rosbag2_storage::TopicMetadata::name)
   .def_readwrite("type", &rosbag2_storage::TopicMetadata::type)
@@ -226,9 +222,6 @@ PYBIND11_MODULE(_storage, m) {
   .def_readwrite(
     "offered_qos_profiles",
     &rosbag2_storage::TopicMetadata::offered_qos_profiles)
-  .def_readwrite(
-    "type_description_hash",
-    &rosbag2_storage::TopicMetadata::type_description_hash)
   .def("equals", &rosbag2_storage::TopicMetadata::operator==);
 
   pybind11::class_<rosbag2_storage::TopicInformation>(m, "TopicInformation")

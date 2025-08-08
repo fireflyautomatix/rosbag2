@@ -182,7 +182,6 @@ TEST_F(TemporaryDirectoryFixture, can_write_and_read_basic_mcap_file)
     topic_metadata.type = "std_msgs/msg/String";
     topic_metadata.serialization_format = "cdr";
     topic_metadata.offered_qos_profiles = {rclcpp::QoS(1)};
-    topic_metadata.type_description_hash = "type_hash1";
 
     std_msgs::msg::String msg;
     msg.data = message_data;

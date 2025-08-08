@@ -118,7 +118,6 @@ struct convert<rosbag2_storage::TopicMetadata>
       node["offered_qos_profiles"] = YAML::convert<std::vector<rclcpp::QoS>>::encode(
         topic.offered_qos_profiles, version);
     }
-    node["type_description_hash"] = topic.type_description_hash;
     return node;
   }
 
@@ -133,11 +132,6 @@ struct convert<rosbag2_storage::TopicMetadata>
     } else if (version >= 4) {
       std::string qos_str = node["offered_qos_profiles"].as<std::string>();
       topic.offered_qos_profiles = rosbag2_storage::to_rclcpp_qos_vector(qos_str, version);
-    }
-    if (version >= 7) {
-      topic.type_description_hash = node["type_description_hash"].as<std::string>();
-    } else {
-      topic.type_description_hash = "";
     }
     return true;
   }
